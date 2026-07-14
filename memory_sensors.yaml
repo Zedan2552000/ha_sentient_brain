@@ -1,0 +1,37 @@
+template:
+  # ============================================================
+  # 1. Omniscient Memory Logger (Chronological Event History)
+  # ============================================================
+  - trigger:
+      - trigger: event
+        event_type: alexa_brain_log
+    sensor:
+      - name: "Alexa Master Brain"
+        unique_id: "alexa_master_brain_omni"
+        state: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+        attributes:
+          memory: >
+            {% set current = this.attributes.memory | default([], true) %}
+            {% set new_entry = {
+              "time": now().strftime('%I:%M %p'),
+              "source": trigger.event.data.source | default('Unknown', true),
+              "message": trigger.event.data.message | default('', true)
+            } %}
+            {{ ([new_entry] + current)[:30] }}
+
+  # ============================================================
+  # 2. Dynamic Context Sensor (Real-time Telemetry)
+  # ============================================================
+  - sensor:
+      - name: "Nova Home Context"
+        unique_id: "nova_home_context_omni"
+        state: "Active"
+        attributes:
+          context: >
+            {
+              "time": "{{ now().strftime('%I:%M %p') }}",
+              "weather_temp": "{{ state_attr('weather.forecast_home', 'temperature') }}",
+              "tv_source": "{{ state_attr('media_player.living_room_tv', 'source') }}",
+              "ps_state": "{{ states('media_player.playstation') }}",
+              "ac_power": "{{ states('sensor.living_room_ac_power') }}"
+            }

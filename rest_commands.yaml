@@ -1,0 +1,90 @@
+rest_command:
+  # --------------------------------------------------------
+  # 1. Groq (Llama-3) - High Speed / Low Latency
+  # --------------------------------------------------------
+  groq_chat:
+    url: "https://api.groq.com/openai/v1/chat/completions"
+    method: "post"
+    headers:
+      Authorization: "Bearer !secret groq_api_key"
+      Content-Type: "application/json"
+    payload: >-
+      {
+        "model": "llama3-70b-8192",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are Nova, an advanced, highly intelligent Smart Home AI. Respond directly, concisely, and with a touch of sarcasm. Base your knowledge on the provided context."
+          },
+          {
+            "role": "user",
+            "content": "{{ user_prompt }}"
+          }
+        ],
+        "temperature": 0.7,
+        "max_tokens": 512
+      }
+
+  # --------------------------------------------------------
+  # 2. OpenRouter (Claude / Mixtral / etc.)
+  # --------------------------------------------------------
+  openrouter_chat:
+    url: "https://openrouter.ai/api/v1/chat/completions"
+    method: "post"
+    headers:
+      Authorization: "Bearer !secret openrouter_api_key"
+      Content-Type: "application/json"
+    payload: >-
+      {
+        "model": "anthropic/claude-3.5-sonnet",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are Nova, the sentient brain of this home."
+          },
+          {
+            "role": "user",
+            "content": "{{ user_prompt }}"
+          }
+        ]
+      }
+
+  # --------------------------------------------------------
+  # 3. DeepSeek - High Logic
+  # --------------------------------------------------------
+  deepseek_chat:
+    url: "https://api.deepseek.com/chat/completions"
+    method: "post"
+    headers:
+      Authorization: "Bearer !secret deepseek_api_key"
+      Content-Type: "application/json"
+    payload: >-
+      {
+        "model": "deepseek-chat",
+        "messages": [
+          {
+            "role": "user",
+            "content": "{{ user_prompt }}"
+          }
+        ]
+      }
+
+  # --------------------------------------------------------
+  # 4. Mistral - Last Resort
+  # --------------------------------------------------------
+  mistral_chat:
+    url: "https://api.mistral.ai/v1/chat/completions"
+    method: "post"
+    headers:
+      Authorization: "Bearer !secret mistral_api_key"
+      Content-Type: "application/json"
+    payload: >-
+      {
+        "model": "mistral-large-latest",
+        "messages": [
+          {
+            "role": "user",
+            "content": "{{ user_prompt }}"
+          }
+        ]
+      }

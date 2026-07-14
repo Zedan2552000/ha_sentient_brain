@@ -1,0 +1,130 @@
+nova_brain:
+  alias: "Nova Brain (Anti-Life 5-Level Chain 🔴)"
+  description: >-
+    Advanced 5-Level LLM routing engine: Gemini -> Groq -> OpenRouter -> DeepSeek -> Mistral.
+  mode: parallel
+  max: 10
+  fields:
+    prompt:
+      description: "The text prompt or question for the AI"
+      example: "You are Nova, summarize the living room status..."
+      required: true
+    source:
+      description: "Trigger source for logging"
+      example: "Motion Sensor / Voice Command"
+      required: false
+  sequence:
+    # Level 1: Gemini (Primary)
+    - action: conversation.process
+      data:
+        agent_id: conversation.google_ai_conversation # Or your default HA agent ID
+        text: "{{ prompt }}"
+      response_variable: gemini_response
+      continue_on_error: true
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: >-
+                {{ gemini_response is defined and gemini_response.response is defined and gemini_response.response.speech is defined and gemini_response.response.speech.plain.speech | default('') | length > 5 }}
+          sequence:
+            - variables:
+                final_response: "{{ gemini_response.response.speech.plain.speech }}"
+            - stop: "Gemini OK"
+              response_variable: final_response
+      default:
+        
+        # Level 2: Groq (Llama-3)
+        - action: rest_command.groq_chat
+          data:
+            user_prompt: "{{ prompt }}"
+          response_variable: groq_response
+          continue_on_error: true
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: >-
+                    {{ groq_response is defined and groq_response.status == 200 and groq_response.content is defined }}
+              sequence:
+                - variables:
+                    groq_json: "{{ groq_response.content | from_json }}"
+                    groq_text: "{{ groq_json.choices[0].message.content | default('') }}"
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ groq_text | length > 5 }}"
+                      sequence:
+                        - variables:
+                            final_response: "{{ groq_text }}"
+                        - stop: "Groq OK"
+                          response_variable: final_response
+          default:
+            
+            # Level 3: OpenRouter (Claude)
+            - action: rest_command.openrouter_chat
+              data:
+                user_prompt: "{{ prompt }}"
+              response_variable: openrouter_response
+              continue_on_error: true
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >-
+                        {{ openrouter_response is defined and openrouter_response.status == 200 and openrouter_response.content is defined }}
+                  sequence:
+                    - variables:
+                        or_json: "{{ openrouter_response.content | from_json }}"
+                        or_text: "{{ or_json.choices[0].message.content | default('') }}"
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ or_text | length > 5 }}"
+                          sequence:
+                            - variables:
+                                final_response: "{{ or_text }}"
+                            - stop: "OpenRouter OK"
+                              response_variable: final_response
+              default:
+                
+                # Level 4: DeepSeek
+                - action: rest_command.deepseek_chat
+                  data:
+                    user_prompt: "{{ prompt }}"
+                  response_variable: deepseek_response
+                  continue_on_error: true
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: >-
+                            {{ deepseek_response is defined and deepseek_response.status == 200 and deepseek_response.content is defined }}
+                      sequence:
+                        - variables:
+                            ds_json: "{{ deepseek_response.content | from_json }}"
+                            ds_text: "{{ ds_json.choices[0].message.content | default('') }}"
+                        - choose:
+                            - conditions:
+                                - condition: template
+                                  value_template: "{{ ds_text | length > 5 }}"
+                              sequence:
+                                - variables:
+                                    final_response: "{{ ds_text }}"
+                                - stop: "DeepSeek OK"
+                                  response_variable: final_response
+                  default:
+                    
+                    # Level 5: Mistral (Last Resort)
+                    - action: rest_command.mistral_chat
+                      data:
+                        user_prompt: "{{ prompt }}"
+                      response_variable: mistral_response
+                      continue_on_error: true
+                    - variables:
+                        mistral_text: >-
+                          {% if mistral_response is defined and mistral_response.status == 200 and mistral_response.content is defined %}
+                            {% set mj = mistral_response.content | from_json %}
+                            {{ mj.choices[0].message.content | default('Sorry, all AI providers are currently unavailable.') }}
+                          {% else %}
+                            Sorry, all AI providers are currently unavailable. Please try again later.
+                          {% endif %}
+                        final_response: "{{ mistral_text }}"
+                    - stop: "Mistral (last resort)"
+                      response_variable: final_response
